@@ -28,3 +28,39 @@ class TestPage(object):
     def test_get_dom_gross(self):
         g = b.parse_dom_gross(self.soup)
         eq_(g, 333130696)
+
+    def test_get_budg(self):
+        budg = b.parse_budget(self.soup)
+        eq_(budg, 170000000)
+
+    def test_find_money_string_succeed(self):
+        label = self.soup.find("td", text="Domestic:")
+        data_row = label.parent
+        r = b.find_money_pattern(data_row)
+        eq_(r, "$333,130,696")
+
+    def test_find_money_string_fail(self):
+        row = self.soup.find("tr")
+        r = b.find_money_pattern(row)
+        eq_(r, None)
+
+    def test_world_gross(self):
+        w = b.parse_world_gross(self.soup)
+        eq_(w, 772730696)
+
+    def test_rating(self):
+        r = b.parse_rating(self.soup)
+        eq_(r, "PG-13")
+
+    def test_date_parse(self):
+        d = b.parse_release_date(self.soup)
+        eq_(d.strftime("%x"), "08/01/14")
+
+    def test_page_parse(self):
+        m = b.parse_movie_page(self.page)
+        eq_(m["title"], "Guardians of the Galaxy")
+        eq_(m["rating"], "PG-13")
+        eq_(m["release date"].strftime("%x"), "08/01/14")
+        eq_(m["domestic gross"], 333130696)
+        eq_(m["worldwide gross"], 772730696)
+        eq_(m["budget"], 170000000)
