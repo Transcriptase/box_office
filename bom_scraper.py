@@ -4,7 +4,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 from datetime import datetime
-
+import csv
 
 def get_movie_page(movie_id):
     #Returns a requests object of the BOM page for the movie whose BOM ID is movie_id
@@ -21,7 +21,9 @@ def parse_movie_page(page_request):
     movie_info = {}
     movie_info["title"] = parse_movie_title(soup)
     movie_info["rating"] = parse_rating(soup)
-    movie_info["release date"] = parse_release_date(soup)
+    date = parse_release_date(soup)
+    movie_info["release year"] = date.strftime("%Y")
+    movie_info["release day"] = date.strftime("%j")
     movie_info["domestic gross"] = parse_dom_gross(soup)
     movie_info["worldwide gross"] = parse_world_gross(soup)
     movie_info["budget"] = parse_budget(soup)
@@ -33,8 +35,13 @@ def parse_movie_title(page_soup):
     #This counts on the title being the only thing on the page that's size=6
     #Could stand to have an error check for this.
     title_element = page_soup.find(size=6)
-    title = title_element.string
-    return title
+    if title_element:
+        title = title_element.string
+        return title
+    else:
+        title_element = page_soup.find(size=5)
+        title = title_element.string
+        return title
 
 
 def parse_dom_gross(page_soup):
@@ -56,10 +63,13 @@ def parse_budget(page_soup):
 
 def parse_world_gross(page_soup):
     label = page_soup.find(text=re.compile("Worldwide:"))
-    label_cell = label.parent.parent
-    data_row = label_cell.parent
-    world_gross_string = find_money_pattern(data_row)
-    return format_money(world_gross_string)
+    if label:
+        label_cell = label.parent.parent
+        data_row = label_cell.parent
+        world_gross_string = find_money_pattern(data_row)
+        return format_money(world_gross_string)
+    else:
+        return None
 
 
 def parse_rating(page_soup):
@@ -111,3 +121,50 @@ def words_to_num(money_string):
     base = int(base_match.group(0))
     multiplier = 1000000
     return base*multiplier
+
+
+def get_year_page(year):
+    #Retrieves the list of the top 100 movies for a given year
+    #Returns a Requests object
+    url_template = "http://www.boxofficemojo.com/yearly/chart/?page=1&view=releasedate&view2=domestic&yr=%s&p=.htm"
+    url = url_template % year
+    year_page_request = requests.get(url)
+    return year_page_request
+
+
+def get_id_list(year_page):
+    soup = BeautifulSoup(year_page.text)
+    label = soup.find(text=re.compile("Rank"))
+    top_row = label.parent.parent.parent.parent.parent
+    id_list = []
+    current = top_row
+    for i in range(100):
+        current = current.next_sibling
+        id = get_id_from_row(current)
+        id_list.append(id)
+    return id_list
+
+def get_id_from_row(row):
+    #Takes a "tr" tree of the yearly movie table and returns the movie's internal id
+    link = row.find("a", href=re.compile("movies"))
+    id = re.search("id=(.*)\.htm", str(link)).group(1)
+    return id
+
+
+def get_year_data(year):
+    ids = get_id_list(get_year_page(year))
+    movie_data = []
+    for id in ids:
+        page = get_movie_page(id)
+        movie_data.append(parse_movie_page(page))
+    return movie_data
+
+
+def get_year_range_data(start, stop):
+    year_data = []
+    for year in range(start, stop+1):
+        year_data.append(get_year_data(year))
+    return year_data
+
+def output(year_data, filename):
+    pass
