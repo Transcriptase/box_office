@@ -32,16 +32,17 @@ def parse_movie_page(page_request):
 
 def parse_movie_title(page_soup):
     #Takes a BeautifulSoup object of a movie page, returns the movie's title
-    #This counts on the title being the only thing on the page that's size=6
-    #Could stand to have an error check for this.
+    #This counts on the title being the first thing on the page that's size=5 or 6
     title_element = page_soup.find(size=6)
-    if title_element:
-        title = title_element.string
-        return title
-    else:
+    if not title_element:
         title_element = page_soup.find(size=5)
-        title = title_element.string
-        return title
+    title = title_element.string
+    #If there's no line break in the title, this works. If not,
+    #the title has to be patched together from the string-only content
+    #of the title element
+    if not title:
+        title = " ".join(title_element.strings)
+    return title
 
 
 def parse_dom_gross(page_soup):
@@ -83,8 +84,11 @@ def parse_release_date(page_soup):
     #Finds the release date from a BOM movie page BeautifulSoup object
     #and returns as a datetime object
     label = page_soup.find(text=re.compile("Release Date:"))
-    date = label.parent.a.string
-    date_object = datetime.strptime(date, "%B %d, %Y")
+    data_cell = label.parent
+    for string in data_cell.strings:
+        if not re.match("Release Date", string):
+            date_string = string
+    date_object = datetime.strptime(date_string, "%B %d, %Y")
     return date_object
 
 
@@ -154,9 +158,16 @@ def get_id_from_row(row):
 def get_year_data(year):
     ids = get_id_list(get_year_page(year))
     movie_data = []
+    print "Retrieving top 100 films from %s" % year
     for id in ids:
-        page = get_movie_page(id)
-        movie_data.append(parse_movie_page(page))
+        try:
+            page = get_movie_page(id)
+            movie_data.append(parse_movie_page(page))
+        except:
+            print "Error encountered for movie id: %s. Skipping." % id
+            #This added after the fact that "Elizabeth (1998)" has an extra space at the end of its title
+            #that parses differently in unicode vs HTML caused more trouble than it was
+            #worth to fix.
     return movie_data
 
 
@@ -167,4 +178,32 @@ def get_year_range_data(start, stop):
     return year_data
 
 def output(year_data, filename):
-    pass
+    f = open(filename, "w")
+    field_names = ["title",
+                   "rating",
+                   "release year",
+                   "release day",
+                   "domestic gross",
+                   "worldwide gross",
+                   "budget"]
+    writer = csv.DictWriter(f, field_names)
+    writer.writeheader()
+    for year in year_data:
+        for movie in year:
+            writer.writerow(movie)
+
+
+if __name__ == "__main__":
+    fn = "box_office.csv"
+    print "Retrieving data from Box Office Mojo:"
+    x = get_year_range_data(1990, 2014)
+    skipped_ids = ["elizabeth%A0", "simpleplan%A0"]
+    skipped_data = []
+    for id in skipped_ids:
+        movie_data = parse_movie_page(get_movie_page(id))
+        movie_data["title"] = movie_data["title"].encode("ascii", "ignore")
+        skipped_data.append(movie_data)
+    x.append(skipped_data)
+    #Yes, this is kludgy. Deal with it, or figure out the unicode/str/html parsing thing yourself.
+    output(x, fn)
+    print "Done. Output to %s" % fn

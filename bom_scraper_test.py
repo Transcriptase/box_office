@@ -28,6 +28,15 @@ class TestPage(object):
         t = b.parse_movie_title(self.soup)
         eq_(t, "Guardians of the Galaxy")
 
+    def test_get_multiline_title(self):
+        ml_page_id = "catchingfire"
+        #The id for The Hunger Games: Catching Fire. The line break made the simple
+        #version of title recognition fail.
+        ml_page = b.get_movie_page(ml_page_id)
+        ml_soup = BeautifulSoup(ml_page.text)
+        t = b.parse_movie_title(ml_soup)
+        eq_(t, "The Hunger Games: Catching Fire")
+
     def test_get_dom_gross(self):
         g = b.parse_dom_gross(self.soup)
         eq_(g, 333145154)
@@ -58,6 +67,15 @@ class TestPage(object):
     def test_date_parse(self):
         d = b.parse_release_date(self.soup)
         eq_(d.strftime("%x"), "08/01/14")
+
+    def test_date_nolink(self):
+        #original version relied on the release date being inside a link,
+        #which is not true of older movies
+        sw_id = "starwars5"
+        #id for Empire Strikes Back
+        sw_soup = BeautifulSoup(b.get_movie_page(sw_id).text)
+        d = b.parse_release_date(sw_soup)
+        eq_(d.strftime("%x"), "05/21/80")
 
     def test_page_parse(self):
         m = b.parse_movie_page(self.page)
