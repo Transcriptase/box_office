@@ -121,10 +121,14 @@ def words_to_num(money_string):
     #"$<number><word>" where <word> is "millions" to an integer
     #This is pretty fragile right now, especially if there are reported budgets less than 1m.
     #This is the format BMO uses for budget numbers
-    base_match = re.search("([0-9]+)", money_string)
-    base = int(base_match.group(0))
-    multiplier = 1000000
-    return base*multiplier
+    if re.search("million", money_string):
+        multiplier = 1000000
+        base_match = re.search("([0-9]+)", money_string)
+        base = int(base_match.group(0))
+        final = base * multiplier
+    else:
+        final = format_money(money_string)
+    return final
 
 
 def get_year_page(year):

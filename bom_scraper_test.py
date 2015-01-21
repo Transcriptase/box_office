@@ -8,25 +8,25 @@ from bs4 import BeautifulSoup
 
 class TestPage(object):
     def __init__(self):
-        self.test_id = "marvel2014a"
-        #The BOM id for Guardians of the Galaxy, for testing
+        self.test_id = "bringiton"
+        #The BOM id for Bring It On, for testing
+        #Two reasons: It is old and will not change, unlike my original test movie from last year,
+        #and it is awesome
         self.page = b.get_movie_page(self.test_id)
         self.soup = BeautifulSoup(self.page.text)
-        #These comparisons work for the week of 1/16/15, might need to adjust them to whatever is current
-        #Or I could switch this to an old movie that's not changing.
-        #TODO: Switch to an old movie that won't change
 
     def test_getpage(self):
         t_page = b.get_movie_page(self.test_id)
-        t_match = re.search("Guardians of the Galaxy", t_page.text)
-        #Test that, at least, what comes back contains the words "Guardians of the Galaxy"
-        #which is pretty unlikely unless it successfully pulled the page for GotG
+        t_match = re.search("Bring It On", t_page.text)
+        #Test that, at least, what comes back contains the words "Bring It On"
+        #which is pretty unlikely unless it successfully pulled the page for hat
+        #masterpiece.
         ok_(t_match)
-        eq_(t_match.group(0), "Guardians of the Galaxy")
+        eq_(t_match.group(0), "Bring It On")
 
     def test_get_title(self):
         t = b.parse_movie_title(self.soup)
-        eq_(t, "Guardians of the Galaxy")
+        eq_(t, "Bring It On")
 
     def test_get_multiline_title(self):
         ml_page_id = "catchingfire"
@@ -39,17 +39,24 @@ class TestPage(object):
 
     def test_get_dom_gross(self):
         g = b.parse_dom_gross(self.soup)
-        eq_(g, 333145154)
+        eq_(g, 68379000)
 
     def test_get_budg(self):
         budg = b.parse_budget(self.soup)
-        eq_(budg, 170000000)
+        eq_(budg, 28000000)
+
+    def test_get_budg_no_mill(self):
+        fp_page_id = "fireproof"
+        #ID of a movie with a budget of less than $1m
+        fp_soup = BeautifulSoup(b.get_movie_page(fp_page_id).text)
+        budg = b.parse_budget(fp_soup)
+        eq_(budg, 500000)
 
     def test_find_money_string_succeed(self):
         label = self.soup.find("td", text="Domestic:")
         data_row = label.parent
         r = b.find_money_pattern(data_row)
-        eq_(r, "$333,145,154")
+        eq_(r, "$68,379,000")
 
     def test_find_money_string_fail(self):
         row = self.soup.find("tr")
@@ -58,7 +65,7 @@ class TestPage(object):
 
     def test_world_gross(self):
         w = b.parse_world_gross(self.soup)
-        eq_(w, 772745154)
+        eq_(w, 90449929)
 
     def test_rating(self):
         r = b.parse_rating(self.soup)
@@ -66,7 +73,7 @@ class TestPage(object):
 
     def test_date_parse(self):
         d = b.parse_release_date(self.soup)
-        eq_(d.strftime("%x"), "08/01/14")
+        eq_(d.strftime("%x"), "08/25/00")
 
     def test_date_nolink(self):
         #original version relied on the release date being inside a link,
@@ -79,12 +86,12 @@ class TestPage(object):
 
     def test_page_parse(self):
         m = b.parse_movie_page(self.page)
-        eq_(m["title"], "Guardians of the Galaxy")
+        eq_(m["title"], "Bring It On")
         eq_(m["rating"], "PG-13")
-        eq_(m["release year"], "2014")
-        eq_(m["domestic gross"], 333145154)
-        eq_(m["worldwide gross"], 772745154)
-        eq_(m["budget"], 170000000)
+        eq_(m["release year"], "2000")
+        eq_(m["domestic gross"], 68379000)
+        eq_(m["worldwide gross"], 90449929)
+        eq_(m["budget"], 28000000)
 
 class TestYear(object):
     def __init__(self):
